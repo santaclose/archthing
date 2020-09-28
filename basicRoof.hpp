@@ -1,7 +1,7 @@
 
 namespace Roof {
 
-	void Create(std::vector<vec>& externalCornerPositions) // positions with y=0
+	void Create(const std::vector<vec>& externalCornerPositions) // positions with y=0
 	{
 		std::vector<unsigned int> inLow, outLow, outHigh, inHigh, hole;
 	

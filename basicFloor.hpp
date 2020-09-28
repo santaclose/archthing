@@ -11,8 +11,7 @@ namespace Floor {
 			high.push_back(ml::vertex(externalCornerPositions[i] + vec::up * floorThickness));
 		}
 		ml::concaveFace(&high[0], high.size());
-		if (bottomCap)
-			ml::concaveFace(&low[0], low.size(), true);
+
 		unsigned int quad[4];
 		for (int i = 0; i < low.size(); i++)
 		{
@@ -23,6 +22,12 @@ namespace Floor {
 			quad[2] = high[nextIndex];
 			quad[3] = high[i];
 			ml::face(quad, 4);
+		}
+
+		if (bottomCap)
+		{
+			ml::setMaterial("ceiling");
+			ml::concaveFace(&low[0], low.size(), true);
 		}
 	}
 }
