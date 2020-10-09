@@ -58,6 +58,9 @@ namespace OBJReader {
         floorCount = 1;
 
         std::ifstream is(filePath);
+        if (is.fail())
+            std::cout << "error opening file " << filePath << std::endl;
+
         std::string str;
         while (std::getline(is, str))
         {

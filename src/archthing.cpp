@@ -1,4 +1,4 @@
-#include "../../src/Model.h"
+#include <Model.h>
 #include <modelTool/ml.h>
 #include <fstream>
 #include <iostream>
@@ -114,7 +114,7 @@ void Model::GenerateModel()
 {
 	unsigned int floorCount;
 	Wireframe wf;
-	OBJReader::Read(wf, floorCount, "assets/archthing/i/4.obj", wallHeight, inputScale);
+	OBJReader::Read(wf, floorCount, "assets/input/testHF.obj", wallHeight, inputScale);
 
 	std::cout << "-- sorting vertex connections\n";
 	Utils::sortVertexConnectionsByAngle(wf);
