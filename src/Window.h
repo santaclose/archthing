@@ -39,6 +39,9 @@ namespace Window {
 		quad[3] = wallVertices[3];
 		ml::face(quad, 4, true);
 
+		if (!createWindows)
+			return;
+
 		ml::setMaterial("windowFrame");
 		vec forwardVector = (vertices[edge.b].pos - vertices[edge.a].pos).Normalized();
 		vec rightVector = (forwardVector * vec::up); // cross product of two unit vectors is a unit vector

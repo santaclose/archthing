@@ -1,22 +1,23 @@
 #include <Model.h>
 #include <modelTool/ml.h>
+#include "Primitives.h"
+
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <imgui.h>
 
-#include "Wireframe.h"
-#include "objReader.h"
-#include "Utils.hpp"
-
+char fileName[256] = "assets/input/b.obj";
 float inputScale = 1.0f;
 float wallHeight = 4.26f;
 float wallThickness = 0.0889f;
+bool  createDoors = true;
 float doorHeight = 2.1f;
 float doorSeparation = 0.003;
 float doorThickness = 0.025;
 float doorHandlePosX = 0.056f;
 float doorHandlePosY = 1.0f;
+bool  createWindows = true;
 float glassThickness = 0.003175f;
 float windowOffset = 1.1f;
 float windowHeight = 2.0f;
@@ -26,24 +27,35 @@ float roofThickness = 0.3f;
 float roofBevel = 0.3f;
 float roofDepth = 0.2f;
 float floorThickness = 0.25f;
+float stairsThickness = 0.32f;
+float stairsWidth = 1.5f;
+float idealStairStepHeight = 0.18f;
 
-#include "basicWall.hpp"
-#include "basicDoor.hpp"
-#include "basicWindow.hpp"
-#include "basicStairs.hpp"
-#include "basicRoof.hpp"
-#include "basicFloor.hpp"
+#include "Wireframe.h"
+#include "OBJReader.h"
+#include "Utils.h"
+#include "Geometry.h"
+
+#include "Wall.h"
+#include "Door.h"
+#include "Window.h"
+#include "Stairs.h"
+#include "Roof.h"
+#include "Floor.h"
 
 void Model::Bindings(bool& haveToGenerateModel)
 {
+	if (ImGui::InputText("File Name", fileName, 256)) haveToGenerateModel = true;
 	BIND(SliderFloat, "Input Scale", &inputScale, 0.01f, 20.0f);
 	BIND(SliderFloat, "Wall Height", &wallHeight, 1.0f, 20.0f);
 	BIND(SliderFloat, "Wall Thickness", &wallThickness, 0.01f, 0.3f);
+	BINDCHECKBOX(Checkbox, "Create Doors", &createDoors);
 	BIND(SliderFloat, "Door Height", &doorHeight, 1.5f, 4.0f);
 	BIND(SliderFloat, "Door Separation", &doorSeparation, 0.0f, 0.3f);
 	BIND(SliderFloat, "Door Thickness", &doorThickness, 0.01f, 0.05f);
 	BIND(SliderFloat, "Door Handle Pos X", &doorHandlePosX, 0.0f, 0.3f);
 	BIND(SliderFloat, "Door Handle Pos Y", &doorHandlePosY, 0.0f, 1.5f);
+	BINDCHECKBOX(Checkbox, "Create Windows", &createWindows);
 	BIND(SliderFloat, "Glass Thickness", &glassThickness, 0.001f, 0.2f);
 	BIND(SliderFloat, "Window Offset", &windowOffset, 0.5f, 2.0f);
 	BIND(SliderFloat, "Window Height", &windowHeight, 0.5f, 3.0f);
@@ -53,6 +65,8 @@ void Model::Bindings(bool& haveToGenerateModel)
 	BIND(SliderFloat, "Roof Bevel", &roofBevel, 0.01f, 1.5f);
 	BIND(SliderFloat, "Roof Depth", &roofDepth, 0.01f, 0.6f);
 	BIND(SliderFloat, "Floor Thickness", &floorThickness, 0.01f, 0.6f);
+	BIND(SliderFloat, "Stairs Thickness", &stairsThickness, 0.1f, 1.0f);
+	BIND(SliderFloat, "Ideal Stair Step Height", &idealStairStepHeight, 0.01f, 0.5f);
 }
 
 void createWallVertices(const Wireframe& wf, std::vector<std::vector<std::pair<unsigned int, unsigned int>>>& wallVertices)
@@ -84,14 +98,14 @@ void createWallVertices(const Wireframe& wf, std::vector<std::vector<std::pair<u
 					unsigned int base = ml::vertex(corner);
 					unsigned int top = ml::vertex(corner + vec::up * wallHeight);
 					wallVertices[i].push_back({ base, top });
-					//Door::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
+					//Primitives::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
 				}
 				{
 					vec corner = wf.vertices[i].pos + ((adj[0] - wf.vertices[i].pos) * vec::up).Normalized() * (wallThickness * 0.5f);
 					unsigned int base = ml::vertex(corner);
 					unsigned int top = ml::vertex(corner + vec::up * wallHeight);
 					wallVertices[i].push_back({ base, top });
-					//Door::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
+					//Primitives::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
 				}
 			}
 			else
@@ -103,7 +117,7 @@ void createWallVertices(const Wireframe& wf, std::vector<std::vector<std::pair<u
 					unsigned int base = ml::vertex(cp);
 					unsigned int top = ml::vertex(cp + vec::up * wallHeight);
 					wallVertices[i].push_back({ base, top });
-					//Door::Cylinder(0.01f, 3, cp, cp + vec::up * wallHeight);
+					//Primitives::Cylinder(0.01f, 3, cp, cp + vec::up * wallHeight);
 				}
 			}
 		}
@@ -112,15 +126,17 @@ void createWallVertices(const Wireframe& wf, std::vector<std::vector<std::pair<u
 
 void Model::GenerateModel()
 {
+	std::cout << "-- reading obj file\n";
 	unsigned int floorCount;
 	Wireframe wf;
-	OBJReader::Read(wf, floorCount, "assets/input/testHF.obj", wallHeight, inputScale);
+	if (!OBJReader::Read(wf, floorCount, fileName, wallHeight, inputScale))
+		return;
 
 	std::cout << "-- sorting vertex connections\n";
 	Utils::sortVertexConnectionsByAngle(wf);
-	std::vector<std::vector<std::pair<unsigned int, unsigned int>>> wallVertices;
 
 	std::cout << "-- creating wall vertices\n";
+	std::vector<std::vector<std::pair<unsigned int, unsigned int>>> wallVertices;
 	createWallVertices(wf, wallVertices);
 
 	std::cout << "-- creating geometry\n";
@@ -135,13 +151,10 @@ void Model::GenerateModel()
 		if (edge.type < EdgeType::StandardStairs)
 		{
 			// find vertex connection indices
-			int i = 0, j = 0;
-			for (; i < wf.vertices[edge.a].conn.size(); i++)
-				if (wf.vertices[edge.a].conn[i] == currentEdge)
-					break;
-			for (; j < wf.vertices[edge.b].conn.size(); j++)
-				if (wf.vertices[edge.b].conn[j] == currentEdge)
-					break;
+			int i = std::find(wf.vertices[edge.a].conn.begin(), wf.vertices[edge.a].conn.end(), currentEdge) - wf.vertices[edge.a].conn.begin();
+			int j = std::find(wf.vertices[edge.b].conn.begin(), wf.vertices[edge.b].conn.end(), currentEdge) - wf.vertices[edge.b].conn.begin();
+
+			// get current edge wall vertices
 			currentEdgeWallVertices[0] = wallVertices[edge.a][((i + 0 + wallVertices[edge.a].size()) % wallVertices[edge.a].size())].first;
 			currentEdgeWallVertices[1] = wallVertices[edge.a][((i - 1 + wallVertices[edge.a].size()) % wallVertices[edge.a].size())].first;
 			currentEdgeWallVertices[2] = wallVertices[edge.a][((i - 1 + wallVertices[edge.a].size()) % wallVertices[edge.a].size())].second;
@@ -153,6 +166,7 @@ void Model::GenerateModel()
 			currentEdgeWallVertices[7] = wallVertices[edge.b][((j - 1 + wallVertices[edge.b].size()) % wallVertices[edge.b].size())].second;
 		}
 
+		// create appropriate geometry
 		switch (edge.type)
 		{
 		case EdgeType::Wall:
@@ -184,32 +198,30 @@ void Model::GenerateModel()
 		externalCornerPositions.clear();
 		for (int c : externalCorners)
 			externalCornerPositions.push_back(wf.vertices[c].pos);
-		Floor::Create(externalCornerPositions, i > 0); // no ceiling when i == 0
+
+		std::vector<std::vector<vec>> holes;
+		Utils::getHoles(wf, holes, i, wallHeight);
+		Floor::Create(externalCornerPositions, holes, i > 0, i == 0); // no ceiling below when i == 0
+
+		std::vector<std::vector<vec>> stairs;
+		Utils::getStairs(wf, stairs, i, wallHeight);
+		Stairs::Create(stairs, stairsWidth);
 
 		if (belowExternalCornerPositions.size() > 0) // if not first floor
 		{
 			std::vector<std::vector<vec>> intermediateRoofPieces;
 			std::vector<std::vector<vec>> intermediateCeilingPieces;
-			Utils::getIntermediatePieces(
+			Utils::getIntermediatePieces( // this should say what sides are next to the external walls
 				belowExternalCornerPositions,
 				externalCornerPositions,
 				intermediateRoofPieces,
 				intermediateCeilingPieces);
 
-			std::cout << "intermediate roof pieces:\n";
-
 			for (const std::vector<vec>& piece : intermediateRoofPieces)
-				Roof::Create(piece);
+				Roof::CreateIntermediate(piece);
 
-			//for (vec& v : intermediate)
-			//	std::cout << "   " << v.x << ", " << v.z << std::endl;
-
-			//std::cout << "above:\n";
-			//for (vec& v : externalCornerPositions)
-			//	std::cout << "   " << v.x << ", " << v.z << std::endl;
-			//std::cout << std::endl << "below:\n";
-			//for (vec& v : belowExternalCornerPositions)
-			//	std::cout << "   " << v.x << ", " << v.z << std::endl;
+			for (const std::vector<vec>& piece : intermediateCeilingPieces)
+				Roof::CreateIntermediateCeil(piece);
 		}
 		belowExternalCornerPositions = externalCornerPositions;
 	}

@@ -1,7 +1,8 @@
-#include "Utils.hpp"
+#include "Utils.h"
 #include "Geometry.h"
 
 #include <iostream>
+#include <algorithm>
 
 namespace Utils {
 
@@ -91,7 +92,7 @@ namespace Utils {
             if (std::abs(vertices[edge.a].pos.y - vertices[i].pos.y) > 0.001f)
                 continue;
 
-            if (Geometry::intersect(vertices[edge.a].pos, vertices[edge.b].pos, vertices[i].pos, vertices[i].pos + rayDir * rayDistance))
+            if (Geometry::intersect2D(vertices[edge.a].pos, vertices[edge.b].pos, vertices[i].pos, vertices[i].pos + rayDir * rayDistance))
                 return true;
         }
         return false;
@@ -131,7 +132,7 @@ namespace Utils {
         float wallHeight)
     {
         float rayDistance = maxDistanceBetweenVertices(wf.vertices) + 1.0f;
-        auto firstVertices = findFirstExternalVertices(wf, rayDistance, floor, wallHeight);
+        std::pair<int, int> firstVertices = findFirstExternalVertices(wf, rayDistance, floor, wallHeight);
         outVertices.insert(outVertices.begin(), firstVertices.first);
         outVertices.insert(outVertices.begin(), firstVertices.second);
 
@@ -174,6 +175,129 @@ namespace Utils {
 
     }
 
+    template <typename T>
+    bool contains(const std::vector<std::vector<T>>& vectorOfVectors, const T& value)
+    {
+        for (const std::vector<T>& vector : vectorOfVectors)
+        {
+            for (const T& v : vector)
+                if (v == value)
+                    return true;
+        }
+        return false;
+    }
+
+    void getHoles(
+        const Wireframe& wf,
+        std::vector<std::vector<vec>>& holes,
+        unsigned int floor,
+        float wallHeight)
+    {
+        for (const ge& e : wf.edges)
+        {
+            if (std::abs(wf.vertices[e.a].pos.y - wallHeight * floor) > 0.001f ||
+                std::abs(wf.vertices[e.b].pos.y - wallHeight * floor) > 0.001f) // vertex not in the requested floor
+                continue;
+
+            if (e.type == EdgeType::Hole &&
+                !contains(holes, wf.vertices[e.a].pos) &&
+                !contains(holes, wf.vertices[e.b].pos))
+            {
+                holes.emplace_back();
+
+                // assume positive winding
+                holes.back().push_back(wf.vertices[e.a].pos);
+                holes.back().push_back(wf.vertices[e.b].pos);
+
+                unsigned int initial = e.a, a = e.a, b = e.b;
+                while (true)
+                {
+                    int nextOne;
+                    // if edge 0 contains a
+                    if (wf.edges[wf.vertices[b].conn[0]].a == a ||
+                        wf.edges[wf.vertices[b].conn[0]].b == a)
+                        nextOne = wf.edges[wf.vertices[b].conn[1]].a == b ?
+                            wf.edges[wf.vertices[b].conn[1]].b :
+                            wf.edges[wf.vertices[b].conn[1]].a;
+                    else
+                        nextOne = wf.edges[wf.vertices[b].conn[0]].a == b ?
+                            wf.edges[wf.vertices[b].conn[0]].b :
+                            wf.edges[wf.vertices[b].conn[0]].a;
+
+                    if (nextOne == initial)
+                        break;
+
+                    holes.back().push_back(wf.vertices[nextOne].pos);
+                    a = b;
+                    b = nextOne;
+                }
+                vec sum = vec::zero;
+                for (int i = 0; i < holes.back().size(); i++)
+                {
+                    int n = (i + 1) % holes.back().size();
+                    int nn = (i + 2) % holes.back().size();
+                    sum += (holes.back()[n] - holes.back()[i]).Cross(holes.back()[nn] - holes.back()[n]);
+                }
+                if (sum.y < 0)
+                    std::reverse(holes.back().begin(), holes.back().end());
+            }
+        }
+    }
+
+    void getStairs(const Wireframe& wf, std::vector<std::vector<vec>>& stairs, unsigned int floor, float wallHeight)
+    {
+        for (const ge& e : wf.edges)
+        {
+            if (std::abs(wf.vertices[e.a].pos.y - wallHeight * floor) > 0.001f ||
+                std::abs(wf.vertices[e.b].pos.y - wallHeight * floor) > 0.001f) // vertex not in the requested floor
+                continue;
+
+            if (e.type == EdgeType::StandardStairs &&
+                !contains(stairs, wf.vertices[e.a].pos) &&
+                !contains(stairs, wf.vertices[e.b].pos))
+            {
+                stairs.emplace_back();
+
+                //unsigned int initial = e.a, a = e.a, b = e.b;
+                unsigned int initial = 0, a = 0, b = 0;
+                if (wf.vertices[e.a].conn.size() == 1)
+                {
+                    initial = a = e.a;
+                    b = e.b;
+                }
+                else
+                {
+                    initial = a = e.b;
+                    b = e.a;
+                }
+                stairs.back().push_back(wf.vertices[a].pos);
+                stairs.back().push_back(wf.vertices[b].pos);
+
+                while (wf.vertices[b].conn.size() > 1)
+                {
+                    int nextOne;
+                    // if edge 0 contains a
+                    if (wf.edges[wf.vertices[b].conn[0]].a == a ||
+                        wf.edges[wf.vertices[b].conn[0]].b == a)
+                        nextOne = wf.edges[wf.vertices[b].conn[1]].a == b ?
+                        wf.edges[wf.vertices[b].conn[1]].b :
+                        wf.edges[wf.vertices[b].conn[1]].a;
+                    else
+                        nextOne = wf.edges[wf.vertices[b].conn[0]].a == b ?
+                        wf.edges[wf.vertices[b].conn[0]].b :
+                        wf.edges[wf.vertices[b].conn[0]].a;
+
+                    if (nextOne == initial)
+                        break;
+
+                    stairs.back().push_back(wf.vertices[nextOne].pos);
+                    a = b;
+                    b = nextOne;
+                }
+            }
+        }
+    }
+
     void sortVertexConnectionsByAngle(Wireframe& wf)
     {
         for (int i = 0; i < wf.vertices.size(); i++)
@@ -202,7 +326,7 @@ namespace Utils {
             vec posi = point - (diri * vec::up).Normalized() * (thickness * 0.5f);
             vec posn = point + (dirn * vec::up).Normalized() * (thickness * 0.5f);
 
-            vec res = Geometry::intersectLinesPointDir(posi, posn, diri, dirn);
+            vec res = Geometry::intersect2DPointDir(posi, posn, diri, dirn);
             //std::cout << "res: " << res.x << ", " << res.y << ", " << res.z << std::endl;
             connectionPoints.push_back(res);
         }
@@ -225,7 +349,7 @@ namespace Utils {
             {
                 if (Geometry::areVectorsEqual2D(below[fcvb], above[fcva]))
                 {
-                    std::cout << "found first common vertex: " << above[fcva].x << ", " << above[fcva].z << std::endl;
+                    //std::cout << "found first common vertex: " << above[fcva].x << ", " << above[fcva].z << std::endl;
                     goto tag;
                 }
             }
@@ -234,6 +358,8 @@ namespace Utils {
         return;
 
     tag:
+        // std::cout << "fcv: " << below[fcvb].x << ", " << below[fcvb].z << std::endl;
+
         // create above and below polygons with intersection vertices
         std::vector<vec> aboveWithIntersections;
         std::vector<vec> belowWithIntersections;
@@ -244,6 +370,7 @@ namespace Utils {
 
             aboveWithIntersections.push_back(above[ca]);
             aboveWithIntersections.back().y = below[0].y;
+            //Primitives::Cylinder(0.5, 6, aboveWithIntersections.back(), aboveWithIntersections.back() + vec::up * 0.2);
 
             for (int j = 0; j < below.size(); j++)
             {
@@ -254,6 +381,7 @@ namespace Utils {
                     Geometry::isPointInLineSegment2D(above[ca], above[na], below[cb]))
                 {
                     aboveWithIntersections.push_back(below[cb]);
+                    //Primitives::Cylinder(0.5, 6, aboveWithIntersections.back(), aboveWithIntersections.back() + vec::up * 0.2);
                 }
             }
         }
@@ -263,6 +391,7 @@ namespace Utils {
             int nb = mod(fcvb + i + 1, below.size());
 
             belowWithIntersections.push_back(below[cb]);
+            //Primitives::Cylinder(0.5, 3, belowWithIntersections.back(), belowWithIntersections.back() + vec::up * 0.2);
 
             for (int j = 0; j < above.size(); j++)
             {
@@ -274,21 +403,27 @@ namespace Utils {
                 {
                     belowWithIntersections.push_back(above[ca]);
                     belowWithIntersections.back().y = below[0].y;
+                    //Primitives::Cylinder(0.5, 3, belowWithIntersections.back(), belowWithIntersections.back() + vec::up * 0.2);
                 }
             }
         }
 
         // get loose parts
         for (int i = 0, j = 0;
-            i < aboveWithIntersections.size() && j < belowWithIntersections.size();
+            i < aboveWithIntersections.size() || j < belowWithIntersections.size();
             i++, j++)
         {
-            if (!Geometry::areVectorsEqual2D(aboveWithIntersections[i], belowWithIntersections[j]))
+            if (!Geometry::areVectorsEqual2D(
+                aboveWithIntersections[mod(i, aboveWithIntersections.size())],
+                belowWithIntersections[mod(j, belowWithIntersections.size())]))
             {
-                if (!Geometry::isPointInsidePolygon2D(aboveWithIntersections, belowWithIntersections[j], true)) // below outside
+                if (!Geometry::isPointInsidePolygon2D(
+                    aboveWithIntersections,
+                    belowWithIntersections[mod(j, belowWithIntersections.size())],
+                    true)) // below outside
                 {
                     roofPieces.emplace_back();
-                    roofPieces.back().push_back(aboveWithIntersections[i - 1]);
+                    roofPieces.back().push_back(aboveWithIntersections[mod(i - 1, aboveWithIntersections.size())]);
 
                     int p = 0, q = 0;
                     for (; p < aboveWithIntersections.size(); p++)
@@ -302,7 +437,7 @@ namespace Utils {
                                 )
                                 goto baOut;
                         }
-                        roofPieces.back().insert(roofPieces.back().begin(), aboveWithIntersections[i + p]);
+                        roofPieces.back().insert(roofPieces.back().begin(), aboveWithIntersections[mod(i + p, aboveWithIntersections.size())]);
                     }
                 baOut:
                     i = mod(i + p, aboveWithIntersections.size());
@@ -313,12 +448,15 @@ namespace Utils {
                         j++;
                     }
                     roofPieces.back().push_back(belowWithIntersections[mod(j, belowWithIntersections.size())]);
-                    std::cout << "below outside\n";
+                    //std::cout << "below outside\n";
                 }
-                else if (Geometry::isPointInsidePolygon2D(aboveWithIntersections, belowWithIntersections[j], false)) // below inside
+                else if (Geometry::isPointInsidePolygon2D(
+                    aboveWithIntersections,
+                    belowWithIntersections[mod(j, belowWithIntersections.size())],
+                    false)) // below inside
                 {
                     ceilingPieces.emplace_back();
-                    ceilingPieces.back().push_back(aboveWithIntersections[i - 1]);
+                    ceilingPieces.back().push_back(aboveWithIntersections[mod(i - 1, aboveWithIntersections.size())]);
 
                     int p = 0, q = 0;
                     for (; p < aboveWithIntersections.size(); p++)
@@ -332,7 +470,7 @@ namespace Utils {
                                 )
                                 goto biOut;
                         }
-                        ceilingPieces.back().push_back(aboveWithIntersections[i + p]);
+                        ceilingPieces.back().push_back(aboveWithIntersections[mod(i + p, aboveWithIntersections.size())]);
                     }
                 biOut:
                     i = mod(i + p, aboveWithIntersections.size());
@@ -343,12 +481,15 @@ namespace Utils {
                         j++;
                     }
                     ceilingPieces.back().insert(ceilingPieces.back().begin(), belowWithIntersections[mod(j, belowWithIntersections.size())]);
-                    std::cout << "below inside\n";
+                    //std::cout << "below inside\n";
                 }
-                else if (!Geometry::isPointInsidePolygon2D(belowWithIntersections, aboveWithIntersections[i], true)) // above outside
+                else if (!Geometry::isPointInsidePolygon2D(
+                    belowWithIntersections,
+                    aboveWithIntersections[mod(i, aboveWithIntersections.size())],
+                    true)) // above outside
                 {
                     ceilingPieces.emplace_back();
-                    ceilingPieces.back().push_back(belowWithIntersections[j - 1]);
+                    ceilingPieces.back().push_back(belowWithIntersections[mod(j - 1, belowWithIntersections.size())]);
 
                     int q = 0, p = 0;
                     for (; q < belowWithIntersections.size(); q++)
@@ -362,7 +503,7 @@ namespace Utils {
                                 )
                                 goto aoOut;
                         }
-                        ceilingPieces.back().insert(ceilingPieces.back().begin(), belowWithIntersections[j + q]);
+                        ceilingPieces.back().insert(ceilingPieces.back().begin(), belowWithIntersections[mod(j + q, belowWithIntersections.size())]);
                     }
                 aoOut:
                     j = mod(j + q, belowWithIntersections.size());
@@ -373,12 +514,15 @@ namespace Utils {
                         i++;
                     }
                     ceilingPieces.back().push_back(aboveWithIntersections[mod(i, aboveWithIntersections.size())]);
-                    std::cout << "above outside\n";
+                    //std::cout << "above outside\n";
                 }
-                else if (Geometry::isPointInsidePolygon2D(belowWithIntersections, aboveWithIntersections[i], false)) // above inside
+                else if (Geometry::isPointInsidePolygon2D(
+                    belowWithIntersections,
+                    aboveWithIntersections[mod(i, aboveWithIntersections.size())],
+                    false)) // above inside
                 {
                     roofPieces.emplace_back();
-                    roofPieces.back().push_back(belowWithIntersections[j - 1]);
+                    roofPieces.back().push_back(belowWithIntersections[mod(j - 1, belowWithIntersections.size())]);
 
                     int q = 0, p = 0;
                     for (; q < belowWithIntersections.size(); q++)
@@ -392,7 +536,7 @@ namespace Utils {
                                 )
                                 goto aiOut;
                         }
-                        roofPieces.back().push_back(belowWithIntersections[j + q]);
+                        roofPieces.back().push_back(belowWithIntersections[mod(j + q, belowWithIntersections.size())]);
                     }
                 aiOut:
                     j = mod(j + q, belowWithIntersections.size());
@@ -403,7 +547,7 @@ namespace Utils {
                         i++;
                     }
                     roofPieces.back().insert(roofPieces.back().begin(), aboveWithIntersections[mod(i, aboveWithIntersections.size())]);
-                    std::cout << "above inside\n";
+                    //std::cout << "above inside\n";
                 }
             }
         }

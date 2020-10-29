@@ -2,7 +2,7 @@
 #include <modelTool/vl.h>
 #include <vector>
 
-enum class EdgeType { Wall = 0, Door = 1, Window = 2, StandardStairs = 3, SpiralStairs = 4 };
+enum class EdgeType { Wall = 0, Door = 1, Window = 2, Hole = 3, StandardStairs = 4, SpiralStairs = 5 };
 struct ge;
 struct gv
 {

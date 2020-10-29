@@ -1,6 +1,10 @@
 #include "Geometry.h"
+#include "Utils.h"
 
 #include <vector>
+#include <algorithm>
+#include <iostream>
+#include <unordered_map>
 
 namespace Geometry
 {
@@ -8,15 +12,15 @@ namespace Geometry
     {
         return (C.z - A.z) * (B.x - A.x) > (B.z - A.z) * (C.x - A.x);
     }
-    bool intersect(const vec& l0a, const vec& l0b, const vec& l1a, const vec& l1b)
+    bool intersect2D(const vec& l0a, const vec& l0b, const vec& l1a, const vec& l1b)
     {
         return ccw(l0a, l1a, l1b) != ccw(l0b, l1a, l1b) && ccw(l0a, l0b, l1a) != ccw(l0a, l0b, l1b);
     }
-    bool intersectIgnoreParallel(const vec& l0a, const vec& l0b, const vec& l1a, const vec& l1b, float threshold)
+    bool intersect2DIgnoreParallel(const vec& l0a, const vec& l0b, const vec& l1a, const vec& l1b, float threshold)
     {
         if (std::abs((l0b - l0a).Dot(l1a - l1b) > threshold))
             return false;
-        return intersect(l0a, l0b, l1a, l1b);
+        return intersect2D(l0a, l0b, l1a, l1b);
     }
     bool isPointInLineSegment(vec lineA, vec lineB, vec point, float threshold)
     {
@@ -29,33 +33,32 @@ namespace Geometry
         return std::abs((la - p).Magnitude() + (lb - p).Magnitude() - (la - lb).Magnitude()) < threshold;
     }
 
-    float cross2d(const vec& a, const vec& b)
+    float cross2D(const vec& a, const vec& b)
     {
         return a.x * b.z - a.z * b.x;
     }
-    float dot2d(const vec& a, const vec& b)
+    float dot2D(const vec& a, const vec& b)
     {
         return a.x * b.x + a.z * b.z;
     }
-    vec intersectLinesPointDir(const vec& pointA, const vec& pointB, const vec& dirA, const vec& dirB, float threshold)
+    vec intersect2DPointDir(const vec& pointA, const vec& pointB, const vec& dirA, const vec& dirB, float threshold)
     {
-        if (std::abs(dot2d(dirA.Normalized(), dirB.Normalized())) > threshold)
+        if (std::abs(dot2D(dirA.Normalized(), dirB.Normalized())) > threshold)
         {
             return (pointA + pointB) * 0.5;
         }
-
 #define p pointA
 #define q pointB
 #define r dirA
 #define s dirB
         vec qp = q - p;
-        float rs = cross2d(r, s);
+        float rs = cross2D(r, s);
 
         vec result;
-        if (rs != 0.0 && cross2d(qp, r) != 0.0)
+        if (rs != 0.0 && cross2D(qp, r) != 0.0)
         {
-            float t = cross2d(qp, s) / rs;
-            float u = cross2d(qp, r) / rs;
+            float t = cross2D(qp, s) / rs;
+            float u = cross2D(qp, r) / rs;
             result = (p + (r * t) + q + (s * u)) * 0.5;
         }
         else
@@ -147,5 +150,4 @@ namespace Geometry
         displacement.y = 0.0f;
         return displacement.Magnitude() < threshold; // same position or pretty close
     }
-
 }

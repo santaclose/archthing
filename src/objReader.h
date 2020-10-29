@@ -5,5 +5,5 @@
 
 namespace OBJReader
 {
-	void Read(Wireframe& wf, unsigned int& floorCount, const std::string& filePath, float wallHeight, float inputScale);
+	bool Read(Wireframe& wf, unsigned int& floorCount, const std::string& filePath, float wallHeight, float inputScale);
 }

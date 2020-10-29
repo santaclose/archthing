@@ -48,10 +48,10 @@ namespace OBJReader {
             vertices[newEdge.b].conn.push_back(edges.size() - 1);
         }
 
-        std::cout << "removed " << originalVertices.size() - vertices.size() << " vertices\n";
+        std::cout << "    -- " << originalVertices.size() - vertices.size() << " vertices removed\n";
     }
 
-    void Read(Wireframe& wf, unsigned int& floorCount, const std::string& filePath, float wallHeight, float inputScale)
+    bool Read(Wireframe& wf, unsigned int& floorCount, const std::string& filePath, float wallHeight, float inputScale)
     {
         EdgeType currentEdgeType = EdgeType::Wall;
         unsigned int currentFloor = 0;
@@ -59,7 +59,10 @@ namespace OBJReader {
 
         std::ifstream is(filePath);
         if (is.fail())
-            std::cout << "error opening file " << filePath << std::endl;
+        {
+            std::cout << "    -- could not read file " << filePath << std::endl;
+            return false;
+        }
 
         std::string str;
         while (std::getline(is, str))
@@ -72,22 +75,30 @@ namespace OBJReader {
                 if (str.find("wall") != std::string::npos)
                 {
                     currentEdgeType = EdgeType::Wall;
-                    currentFloor = str.length() > 6 ? std::stoi(str.substr(7, 3)) : 0;
+                    currentFloor = (str.length() > 6 && str[6] == '.') ? std::stoi(str.substr(7, 3)) : 0;
                 }
                 else if (str.find("door") != std::string::npos)
                 {
                     currentEdgeType = EdgeType::Door;
-                    currentFloor = str.length() > 6 ? std::stoi(str.substr(7, 3)) : 0;
+                    currentFloor = (str.length() > 6 && str[6] == '.') ? std::stoi(str.substr(7, 3)) : 0;
                 }
                 else if (str.find("window") != std::string::npos)
                 {
                     currentEdgeType = EdgeType::Window;
-                    currentFloor = str.length() > 8 ? std::stoi(str.substr(9, 3)) : 0;
+                    currentFloor = (str.length() > 8 && str[8] == '.') ? std::stoi(str.substr(9, 3)) : 0;
+                }
+                else if (str.find("hole") != std::string::npos)
+                {
+                    currentEdgeType = EdgeType::Hole;
+                    currentFloor = (str.length() > 6 && str[6] == '.') ? std::stoi(str.substr(7, 3)) : 0;
                 }
                 else if (str.find("spiralStairs") != std::string::npos)
                     currentEdgeType = EdgeType::SpiralStairs;
                 else
+                {
                     currentEdgeType = EdgeType::StandardStairs;
+                    currentFloor = (str.length() > 8 && str[8] == '.') ? std::stoi(str.substr(9, 3)) : 0;
+                }
 
                 floorCount = currentFloor + 1 > floorCount ? currentFloor + 1 : floorCount;
             }
@@ -129,5 +140,6 @@ namespace OBJReader {
         }
 
         removeDuplicated(wf.vertices, wf.edges);
+        return true;
     }
 }
