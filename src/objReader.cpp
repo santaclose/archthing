@@ -1,10 +1,20 @@
-#pragma once
 #include "objReader.h"
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
 
 namespace OBJReader {
+
+    unsigned int numberInString(const std::string& inString)
+    {
+        unsigned int first, last;
+        for (first = 0; first < inString.length() && (inString[first] < '0' || inString[first] > '9'); first++);
+        for (last = first; last < inString.length() && (inString[last] >= '0' && inString[last] <= '9'); last++);
+        if (first == inString.length()) // not found
+            return 0;
+        else
+            return std::stoi(inString.substr(first, last - first));
+    }
 
     void removeDuplicated(std::vector<gv>& vertices, std::vector<ge>& edges)
     {
@@ -72,33 +82,20 @@ namespace OBJReader {
 
             if (str[0] == 'o')
             {
+                currentFloor = numberInString(str);
+
                 if (str.find("wall") != std::string::npos)
-                {
                     currentEdgeType = EdgeType::Wall;
-                    currentFloor = (str.length() > 6 && str[6] == '.') ? std::stoi(str.substr(7, 3)) : 0;
-                }
                 else if (str.find("door") != std::string::npos)
-                {
                     currentEdgeType = EdgeType::Door;
-                    currentFloor = (str.length() > 6 && str[6] == '.') ? std::stoi(str.substr(7, 3)) : 0;
-                }
                 else if (str.find("window") != std::string::npos)
-                {
                     currentEdgeType = EdgeType::Window;
-                    currentFloor = (str.length() > 8 && str[8] == '.') ? std::stoi(str.substr(9, 3)) : 0;
-                }
                 else if (str.find("hole") != std::string::npos)
-                {
                     currentEdgeType = EdgeType::Hole;
-                    currentFloor = (str.length() > 6 && str[6] == '.') ? std::stoi(str.substr(7, 3)) : 0;
-                }
                 else if (str.find("spiralStairs") != std::string::npos)
                     currentEdgeType = EdgeType::SpiralStairs;
-                else
-                {
+                else if (str.find("stairs") != std::string::npos)
                     currentEdgeType = EdgeType::StandardStairs;
-                    currentFloor = (str.length() > 8 && str[8] == '.') ? std::stoi(str.substr(9, 3)) : 0;
-                }
 
                 floorCount = currentFloor + 1 > floorCount ? currentFloor + 1 : floorCount;
             }

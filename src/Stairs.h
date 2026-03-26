@@ -1,4 +1,5 @@
 #pragma once
+#include <glm/glm.hpp>
 
 namespace Stairs {
 
@@ -11,7 +12,7 @@ namespace Stairs {
 
 		float segmentHeight = (ml::getVertexPosition(stairsQuad[3]) - ml::getVertexPosition(stairsQuad[0])).y;
 
-		unsigned int numberOfSteps = round(segmentHeight / idealStairStepHeight), tri[3];
+		unsigned int numberOfSteps = glm::round(segmentHeight / idealStairStepHeight), tri[3];
 		float stepHeight = segmentHeight / numberOfSteps;
 		float stepLength = segmentLength / numberOfSteps;
 

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <glm/glm.hpp>
 
 namespace Utils {
 
@@ -39,7 +40,7 @@ namespace Utils {
             int adjVertex = wf.edges[conn].a == i ? wf.edges[conn].b : wf.edges[conn].a;
             vertexAngle.emplace_back();
             vertexAngle.back().first = adjVertex;
-            vertexAngle.back().second = atan2((wf.vertices[adjVertex].pos.z - wf.vertices[i].pos.z), (wf.vertices[adjVertex].pos.x - wf.vertices[i].pos.x));
+            vertexAngle.back().second = glm::atan((wf.vertices[adjVertex].pos.z - wf.vertices[i].pos.z), (wf.vertices[adjVertex].pos.x - wf.vertices[i].pos.x));
         }
 
         // sort pair vector
@@ -63,7 +64,7 @@ namespace Utils {
             int adjVertex = wf.edges[conn].a == i ? wf.edges[conn].b : wf.edges[conn].a;
             connectionAngle.emplace_back();
             connectionAngle.back().first = conn;
-            connectionAngle.back().second = atan2((wf.vertices[adjVertex].pos.z - wf.vertices[i].pos.z), (wf.vertices[adjVertex].pos.x - wf.vertices[i].pos.x));
+            connectionAngle.back().second = glm::atan((wf.vertices[adjVertex].pos.z - wf.vertices[i].pos.z), (wf.vertices[adjVertex].pos.x - wf.vertices[i].pos.x));
         }
 
         // sort pair vector

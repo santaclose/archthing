@@ -1,4 +1,5 @@
 #include "Primitives.h"
+#include <glm/glm.hpp>
 
 void Primitives::Cylinder(float radius, int steps, const vec& posA, const vec& posB, bool cap)
 {
@@ -18,8 +19,8 @@ void Primitives::Cylinder(float radius, int steps, const vec& posA, const vec& p
 
 	for (int i = 0; i < steps; i++)
 	{
-		vertices[i * 2] = capA[i] = vertex(posA + localRight * cos(angleStep * i) * radius + localForward * sin(angleStep * i) * radius);
-		vertices[i * 2 + 1] = capB[i] = vertex(posB + localRight * cos(angleStep * i) * radius + localForward * sin(angleStep * i) * radius);
+		vertices[i * 2] = capA[i] = vertex(posA + localRight * glm::cos(angleStep * i) * radius + localForward * sin(angleStep * i) * radius);
+		vertices[i * 2 + 1] = capB[i] = vertex(posB + localRight * glm::cos(angleStep * i) * radius + localForward * sin(angleStep * i) * radius);
 
 		if (i > 0)
 		{

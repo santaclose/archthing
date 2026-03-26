@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <imgui.h>
 
@@ -32,7 +33,7 @@ float stairsWidth = 1.5f;
 float idealStairStepHeight = 0.18f;
 
 #include "Wireframe.h"
-#include "OBJReader.h"
+#include "objReader.h"
 #include "Utils.h"
 #include "Geometry.h"
 

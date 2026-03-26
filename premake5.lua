@@ -17,7 +17,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 -- Projects
 group "Dependencies"
-	include "rofv/vendor/GLFW"
+	include "rofv/vendor/glfw"
 	include "rofv/vendor/Glad"
 	include "rofv/vendor/imgui"
 group ""
@@ -53,7 +53,7 @@ project "archthing"
 	{
 		"rofv/src",
 		"rofv/vendor/spdlog/include",
-		"rofv/vendor/GLFW/include",
+		"rofv/vendor/glfw/include",
 		"rofv/vendor/Glad/include",
 		"rofv/vendor/imgui",
 		"rofv/vendor/glm",
@@ -63,10 +63,10 @@ project "archthing"
 
 	links 
 	{ 
-		"GLFW",
+		"glfw",
 		"Glad",
 		"ImGui",
-		"opengl32.lib"
+		-- "opengl32.lib"
 	}
 
 	filter "system:windows"
