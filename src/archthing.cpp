@@ -8,7 +8,7 @@
 #include <string>
 #include <imgui.h>
 
-char fileName[256] = "assets/input/b.obj";
+char fileName[256] = "assets/input/input.obj";
 float inputScale = 1.0f;
 float wallHeight = 4.26f;
 float wallThickness = 0.0889f;

@@ -333,6 +333,7 @@ namespace Utils {
 		}
 	}
 
+	/* This function can hang if something unexpected is provided */
 	void getIntermediatePieces(
 		const std::vector<vec>& below,
 		const std::vector<vec>& above,
