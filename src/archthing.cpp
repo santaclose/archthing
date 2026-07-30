@@ -28,6 +28,7 @@ float roofThickness = 0.3f;
 float roofBevel = 0.3f;
 float roofDepth = 0.2f;
 float floorThickness = 0.25f;
+bool stairsAreRamps = false;
 float stairsThickness = 0.32f;
 float stairsWidth = 1.5f;
 float idealStairStepHeight = 0.18f;
@@ -66,6 +67,7 @@ void Model::Bindings(bool& haveToGenerateModel)
 	BIND(SliderFloat, "Roof Bevel", &roofBevel, 0.01f, 1.5f);
 	BIND(SliderFloat, "Roof Depth", &roofDepth, 0.01f, 0.6f);
 	BIND(SliderFloat, "Floor Thickness", &floorThickness, 0.01f, 0.6f);
+	BINDCHECKBOX(Checkbox, "Stairs are Ramps", &stairsAreRamps);
 	BIND(SliderFloat, "Stairs Thickness", &stairsThickness, 0.1f, 1.0f);
 	BIND(SliderFloat, "Ideal Stair Step Height", &idealStairStepHeight, 0.01f, 0.5f);
 }
@@ -206,7 +208,7 @@ void Model::GenerateModel()
 
 		std::vector<std::vector<vec>> stairs;
 		Utils::getStairs(wf, stairs, i, wallHeight);
-		Stairs::Create(stairs, stairsWidth);
+		Stairs::Create(stairs, stairsWidth, stairsAreRamps);
 
 		if (belowExternalCornerPositions.size() > 0) // if not first floor
 		{

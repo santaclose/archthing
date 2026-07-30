@@ -1,9 +1,10 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <glm/gtx/vector_angle.hpp>
 
 namespace Stairs {
 
-	void CreateStraightStairs(unsigned int* stairsQuad)
+	void CreateStraightStairs(unsigned int* stairsQuad, bool useRamps = false)
 	{
 		vec forwardVector = (ml::getVertexPosition(stairsQuad[3]) - ml::getVertexPosition(stairsQuad[0]));
 		forwardVector.y = 0.0f;
@@ -13,13 +14,14 @@ namespace Stairs {
 		float segmentHeight = (ml::getVertexPosition(stairsQuad[3]) - ml::getVertexPosition(stairsQuad[0])).y;
 
 		unsigned int numberOfSteps = glm::round(segmentHeight / idealStairStepHeight), tri[3];
+		printf("numberOfSteps: %u\n", numberOfSteps);
 		float stepHeight = segmentHeight / numberOfSteps;
 		float stepLength = segmentLength / numberOfSteps;
 
 		unsigned int verticalQuad[4], horizontalQuad[4];
 		verticalQuad[0] = stairsQuad[0];
 		verticalQuad[1] = stairsQuad[1];
-		for (unsigned int cs = 0; cs < numberOfSteps; cs++)
+		for (unsigned int cs = 0; cs < numberOfSteps && !useRamps; cs++)
 		{
 			verticalQuad[2] = ml::vertex(ml::getVertexPosition(verticalQuad[1]) + vec::up * stepHeight);
 			verticalQuad[3] = ml::vertex(ml::getVertexPosition(verticalQuad[0]) + vec::up * stepHeight);
@@ -54,22 +56,40 @@ namespace Stairs {
 			verticalQuad[0] = horizontalQuad[3];
 			verticalQuad[1] = horizontalQuad[2];
 		}
+		if (numberOfSteps == 0 || useRamps)
+		{
+			// small ramp if extremely short
+			ml::setMaterial("floor");
+			ml::face(stairsQuad, 4);
+		}
 	}
 
-	void Create(const std::vector<std::vector<vec>>& paths, float width)
+	void Create(const std::vector<std::vector<vec>>& paths, float width, bool useRamps = false)
 	{
 		float targetHeight = wallHeight;
 
 		for (const std::vector<vec>& path : paths)
 		{
+			std::vector<float> restPerVertex(path.size());
+			restPerVertex[0] = restPerVertex[path.size() - 1] = 0.0f;
+			for (int i = 1; i < path.size() - 1; i++)
+			{
+				glm::vec3 a = glm::vec3(path[i - 1].x, path[i - 1].y, path[i - 1].z);
+				glm::vec3 b = glm::vec3(path[i + 0].x, path[i + 0].y, path[i + 0].z);
+				glm::vec3 c = glm::vec3(path[i + 1].x, path[i + 1].y, path[i + 1].z);
+				// the more the vertex turns, the more flat area there is, and we don't want to consider that
+				float angle = glm::angle(glm::normalize(b - a), glm::normalize(c - b));
+				restPerVertex[i] = glm::tan(angle / 2.0f) * width / 2.0f;
+			}
+
 			std::vector<float> segmentHeight(path.size() - 1);
 			float totalLength = 0.0f;
 
 			for (int i = 0; i < path.size() - 1; i++)
 			{
 				float mag = (path[i + 1] - path[i]).Magnitude();
-				segmentHeight[i] = mag;
-				totalLength += mag;
+				segmentHeight[i] = mag - restPerVertex[i] - restPerVertex[i + 1];
+				totalLength += mag - restPerVertex[i] - restPerVertex[i + 1];
 			}
 			for (float& seg : segmentHeight)
 				seg *= targetHeight / totalLength;
@@ -146,7 +166,7 @@ namespace Stairs {
 					connectionQuad[1] = prevRight;
 					connectionQuad[2] = turningLeft[i - 1] ? quad[1] : quad[0];
 					connectionQuad[3] = turningLeft[i - 1] ? quad[0] : quad[1];
-					CreateStraightStairs(connectionQuad);
+					CreateStraightStairs(connectionQuad, useRamps);
 
 					connectionQuad[0] = prevBelowLeft;
 					connectionQuad[1] = prevBelowRight;
@@ -204,7 +224,7 @@ namespace Stairs {
 			connectionQuad[2] = ml::vertex(path[path.size() - 1] + right * width * 0.5f + vec::up * currentHeight);
 			sideQuads[3] =
 			connectionQuad[3] = ml::vertex(path[path.size() - 1] - right * width * 0.5f + vec::up * currentHeight);
-			CreateStraightStairs(connectionQuad);
+			CreateStraightStairs(connectionQuad, useRamps);
 
 			sideQuads[1] =
 			connectionQuad[0] = prevBelowLeft;

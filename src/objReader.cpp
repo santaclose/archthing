@@ -80,7 +80,7 @@ namespace OBJReader {
 			if (str.length() == 0)
 				continue;
 
-			if (str[0] == 'o')
+			if (str[0] == 'o' && str[1] == ' ')
 			{
 				currentFloor = numberInString(str);
 
@@ -99,7 +99,7 @@ namespace OBJReader {
 
 				floorCount = currentFloor + 1 > floorCount ? currentFloor + 1 : floorCount;
 			}
-			else if (str[0] == 'v')
+			else if (str[0] == 'v' && str[1] == ' ')
 			{
 				int aq, ap, bq, bp, cq, cp;
 				aq = 2;
@@ -117,7 +117,7 @@ namespace OBJReader {
 				wf.vertices.back().pos.y = currentFloor * wallHeight;//std::stof(str.substr(bq, bp - bq)) * inputScale;
 				wf.vertices.back().pos.z = std::stof(str.substr(cq, cp - cq)) * inputScale;
 			}
-			else if (str[0] == 'l')
+			else if (str[0] == 'l' && str[1] == ' ')
 			{
 				int aq, ap, bq, bp;
 				aq = 2;
