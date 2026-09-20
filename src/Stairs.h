@@ -13,7 +13,9 @@ namespace Stairs {
 
 		float segmentHeight = (ml::getVertexPosition(stairsQuad[3]) - ml::getVertexPosition(stairsQuad[0])).y;
 
-		unsigned int numberOfSteps = glm::round(segmentHeight / idealStairStepHeight), tri[3];
+		unsigned int tri[3];
+		float numberOfStepsF = segmentHeight / idealStairStepHeight;
+		unsigned int numberOfSteps = numberOfStepsF < 0.5f ? 0.0f : glm::round(numberOfStepsF);
 		printf("numberOfSteps: %u\n", numberOfSteps);
 		float stepHeight = segmentHeight / numberOfSteps;
 		float stepLength = segmentLength / numberOfSteps;
