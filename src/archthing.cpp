@@ -8,7 +8,18 @@
 #include <string>
 #include <imgui.h>
 
-char fileName[256] = "assets/input/input.obj";
+enum class BuildingType { SingleFile, MultiFloor };
+const char* buildingTypeNames[] = { "SingleFile", "MultiFloor" };
+
+BuildingType buildingType = BuildingType::MultiFloor;
+
+char singleFileFileName[256] = "assets/input/input.obj";
+
+char multiFloorFirstFloorFileName[256] = "assets/input/floor0.obj";
+char multiFloorIntermediateFloorFileName[256] = "assets/input/floorx.obj";
+char multiFloorLastFloorFileName[256] = "assets/input/lastfloor.obj";
+int multiFloorFloorCount = 2;
+
 float inputScale = 1.0f;
 float wallHeight = 4.26f;
 float wallThickness = 0.0889f;
@@ -33,6 +44,8 @@ float stairsThickness = 0.32f;
 float stairsWidth = 1.5f;
 float idealStairStepHeight = 0.18f;
 
+unsigned int floorCount;
+
 #include "Wireframe.h"
 #include "objReader.h"
 #include "Utils.h"
@@ -47,7 +60,20 @@ float idealStairStepHeight = 0.18f;
 
 void Model::Bindings(bool& haveToGenerateModel)
 {
-	if (ImGui::InputText("File Name", fileName, 256)) haveToGenerateModel = true;
+	if (ImGui::Combo("Building type", (int*)&buildingType, buildingTypeNames, IM_ARRAYSIZE(buildingTypeNames))) haveToGenerateModel = true;
+	switch (buildingType)
+	{
+	case BuildingType::SingleFile:
+		if (ImGui::InputText("File Name", singleFileFileName, 256)) haveToGenerateModel = true;
+		break;
+	case BuildingType::MultiFloor:
+		if (ImGui::InputText("First Floor File Name", multiFloorFirstFloorFileName, 256)) haveToGenerateModel = true;
+		if (ImGui::InputText("Intermediate Floor File Name", multiFloorIntermediateFloorFileName, 256)) haveToGenerateModel = true;
+		if (ImGui::InputText("Last Floor File Name", multiFloorLastFloorFileName, 256)) haveToGenerateModel = true;
+		BIND(SliderInt, "Floor count", &multiFloorFloorCount, 2, 20);
+		break;
+	}
+	ImGui::Separator();
 	BIND(SliderFloat, "Input Scale", &inputScale, 0.01f, 20.0f);
 	BIND(SliderFloat, "Wall Height", &wallHeight, 1.0f, 20.0f);
 	BIND(SliderFloat, "Wall Thickness", &wallThickness, 0.01f, 0.3f);
@@ -69,6 +95,7 @@ void Model::Bindings(bool& haveToGenerateModel)
 	BIND(SliderFloat, "Floor Thickness", &floorThickness, 0.01f, 0.6f);
 	BINDCHECKBOX(Checkbox, "Stairs are Ramps", &stairsAreRamps);
 	BIND(SliderFloat, "Stairs Thickness", &stairsThickness, 0.1f, 1.0f);
+	BIND(SliderFloat, "Stairs Width", &stairsWidth, 0.5f, 2.5f);
 	BIND(SliderFloat, "Ideal Stair Step Height", &idealStairStepHeight, 0.01f, 0.5f);
 }
 
@@ -78,50 +105,48 @@ void createWallVertices(const Wireframe& wf, std::vector<std::vector<std::pair<u
 
 	for (int i = 0; i < wf.vertices.size(); i++)
 	{
-		//std::cout << "iteration " << i << std::endl;
-
 		std::vector<vec> adj;
-		bool isStairsVertex = false;
+		bool isWallKindVertex = true;
 		for (int c : wf.vertices[i].conn)
 		{
-			if (wf.edges[c].type >= EdgeType::StandardStairs)
+			if (!IsEdgeWallKind(wf.edges[c].type))
 			{
-				isStairsVertex = true;
+				isWallKindVertex = false;
 				break;
 			}
 			adj.push_back(wf.edges[c].a == i ? wf.vertices[wf.edges[c].b].pos : wf.vertices[wf.edges[c].a].pos);
 		}
 
-		if (!isStairsVertex)
+		if (!isWallKindVertex)
+			continue;
+
+		if (adj.size() == 1)
 		{
-			if (adj.size() == 1)
 			{
-				{
-					vec corner = wf.vertices[i].pos + (vec::up * (adj[0] - wf.vertices[i].pos)).Normalized() * (wallThickness * 0.5f);
-					unsigned int base = ml::vertex(corner);
-					unsigned int top = ml::vertex(corner + vec::up * wallHeight);
-					wallVertices[i].push_back({ base, top });
-					//Primitives::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
-				}
-				{
-					vec corner = wf.vertices[i].pos + ((adj[0] - wf.vertices[i].pos) * vec::up).Normalized() * (wallThickness * 0.5f);
-					unsigned int base = ml::vertex(corner);
-					unsigned int top = ml::vertex(corner + vec::up * wallHeight);
-					wallVertices[i].push_back({ base, top });
-					//Primitives::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
-				}
+				vec corner = wf.vertices[i].pos + (vec::up * (adj[0] - wf.vertices[i].pos)).Normalized() * (wallThickness * 0.5f);
+				unsigned int base = ml::vertex(corner);
+				unsigned int top = ml::vertex(corner + vec::up * wallHeight);
+				wallVertices[i].push_back({ base, top });
+				//Primitives::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
 			}
-			else
 			{
-				std::vector<vec> connectionPoints;
-				Utils::getConnectionPoints(wf.vertices[i].pos, adj, wallThickness, connectionPoints);
-				for (vec& cp : connectionPoints)
-				{
-					unsigned int base = ml::vertex(cp);
-					unsigned int top = ml::vertex(cp + vec::up * wallHeight);
-					wallVertices[i].push_back({ base, top });
-					//Primitives::Cylinder(0.01f, 3, cp, cp + vec::up * wallHeight);
-				}
+				vec corner = wf.vertices[i].pos + ((adj[0] - wf.vertices[i].pos) * vec::up).Normalized() * (wallThickness * 0.5f);
+				unsigned int base = ml::vertex(corner);
+				unsigned int top = ml::vertex(corner + vec::up * wallHeight);
+				wallVertices[i].push_back({ base, top });
+				//Primitives::Cylinder(0.01f, 3, corner, corner + vec::up * wallHeight);
+			}
+		}
+		else
+		{
+			std::vector<vec> connectionPoints;
+			Utils::getConnectionPoints(wf.vertices[i].pos, adj, wallThickness, connectionPoints);
+			for (vec& cp : connectionPoints)
+			{
+				unsigned int base = ml::vertex(cp);
+				unsigned int top = ml::vertex(cp + vec::up * wallHeight);
+				wallVertices[i].push_back({ base, top });
+				//Primitives::Cylinder(0.01f, 3, cp, cp + vec::up * wallHeight);
 			}
 		}
 	}
@@ -129,11 +154,44 @@ void createWallVertices(const Wireframe& wf, std::vector<std::vector<std::pair<u
 
 void Model::GenerateModel()
 {
-	std::cout << "-- reading obj file\n";
-	unsigned int floorCount;
+	std::cout << "-- building wireframe\n";
 	Wireframe wf;
-	if (!OBJReader::Read(wf, floorCount, fileName, wallHeight, inputScale))
-		return;
+	switch (buildingType)
+	{
+	case BuildingType::SingleFile:
+	{
+		std::cout << "   -- reading obj file\n";
+		if (!OBJReader::Read(wf, floorCount, "assets/input.obj", wallHeight, inputScale))
+			return;
+		break;
+	}
+	case BuildingType::MultiFloor:
+	{
+		floorCount = multiFloorFloorCount;
+		std::cout << "   -- reading obj files\n";
+		unsigned int dummy;
+		Wireframe wf_floor0;
+		if (!OBJReader::Read(wf_floor0, dummy, "assets/floor0.obj", wallHeight, inputScale))
+			return;
+		Wireframe wf_floorx;
+		if (!OBJReader::Read(wf_floorx, dummy, "assets/floorx.obj", wallHeight, inputScale))
+			return;
+		Wireframe wf_lastfloor;
+		if (!OBJReader::Read(wf_lastfloor, dummy, "assets/lastfloor.obj", wallHeight, inputScale))
+			return;
+
+		std::cout << "   -- merging wireframes\n";
+		wf.Append(wf_floor0);
+		for (int i = 1; i < floorCount - 1; i++)
+		{
+			wf_floorx.SetY(wallHeight * i);
+			wf.Append(wf_floorx);
+		}
+		wf_lastfloor.SetY(wallHeight * (floorCount - 1));
+		wf.Append(wf_lastfloor);
+		break;
+	}
+	}
 
 	std::cout << "-- sorting vertex connections\n";
 	Utils::sortVertexConnectionsByAngle(wf);
@@ -144,18 +202,24 @@ void Model::GenerateModel()
 
 	std::cout << "-- creating geometry\n";
 
-	unsigned int currentEdge = 0;
-	for (ge& edge : wf.edges)
+	for (unsigned int currentEdge = 0; currentEdge < wf.edges.size(); currentEdge++)
 	{
+		ge& edge = wf.edges[currentEdge];
+		if (!IsEdgeWallKind(edge.type))
+			continue;
+
 		vec displacement = wf.vertices[edge.b].pos - wf.vertices[edge.a].pos;
 
 		// get wall vertices for edge
 		unsigned int currentEdgeWallVertices[8];
-		if (edge.type < EdgeType::StandardStairs)
+
 		{
 			// find vertex connection indices
 			int i = std::find(wf.vertices[edge.a].conn.begin(), wf.vertices[edge.a].conn.end(), currentEdge) - wf.vertices[edge.a].conn.begin();
 			int j = std::find(wf.vertices[edge.b].conn.begin(), wf.vertices[edge.b].conn.end(), currentEdge) - wf.vertices[edge.b].conn.begin();
+
+			bool canAccessWallVertices = wallVertices[edge.a].size() > 0 && wallVertices[edge.b].size() > 0;
+			assert(canAccessWallVertices);
 
 			// get current edge wall vertices
 			currentEdgeWallVertices[0] = wallVertices[edge.a][((i + 0 + wallVertices[edge.a].size()) % wallVertices[edge.a].size())].first;
@@ -181,12 +245,10 @@ void Model::GenerateModel()
 		case EdgeType::Window:
 			Window::Create(currentEdgeWallVertices, wf.vertices, wf.edges, edge);
 			break;
-		case EdgeType::SpiralStairs:
-			break;
-		case EdgeType::StandardStairs:
+		default:
+			assert(false);
 			break;
 		}
-		currentEdge++;
 	}
 
 	std::vector<int> externalVertices, externalCorners;
@@ -229,4 +291,20 @@ void Model::GenerateModel()
 		belowExternalCornerPositions = externalCornerPositions;
 	}
 	Roof::Create(externalCornerPositions);
+
+	// markers for objects
+	for (const ge& edge : wf.edges)
+	{
+		if (!IsEdgeObjectKind(edge.type))
+			continue;
+
+		vec a = wf.vertices[edge.a].pos;
+		vec b = wf.vertices[edge.b].pos;
+		glm::vec3 a_(a.x, a.y + floorThickness, a.z);
+		glm::vec3 b_(b.x, b.y + floorThickness, b.z);
+		glm::quat rot = glm::quatLookAt(glm::normalize(b_ - a_), glm::vec3(0.0f, 1.0f, 0.0f));
+
+		std::string markerName = MarkerNameFromObjectEdge(edge.type);
+		ml::marker(markerName, a_, rot);
+	}
 }

@@ -2,18 +2,37 @@
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
+#include <cassert>
 
 namespace OBJReader {
 
-	unsigned int numberInString(const std::string& inString)
+	inline bool charIsUint(char lal)
+	{
+		return lal >= '0' && lal <= '9';
+	}
+	inline bool charIsFloat(char lal)
+	{
+		return (lal >= '0' && lal <= '9') || lal == '.';
+	}
+
+	unsigned int floorNumberFromObjectName(const std::string& inString)
 	{
 		unsigned int first, last;
-		for (first = 0; first < inString.length() && (inString[first] < '0' || inString[first] > '9'); first++);
-		for (last = first; last < inString.length() && (inString[last] >= '0' && inString[last] <= '9'); last++);
+		for (first = 1; first < inString.length() && (inString[first] != '=' || inString[first - 1] != 'f'); first++);
 		if (first == inString.length()) // not found
 			return 0;
-		else
-			return std::stoi(inString.substr(first, last - first));
+		for (last = first; last < inString.length() && charIsUint(inString[first]); last++);
+		return std::stoi(inString.substr(first, last - first));
+	}
+
+	float widthFromObjectName(const std::string& inString)
+	{
+		unsigned int first, last;
+		for (first = 1; first < inString.length() && (inString[first] != '=' || inString[first - 1] != 'w'); first++);
+		if (first == inString.length()) // not found
+			return 0;
+		for (last = first; last < inString.length() && charIsUint(inString[first]); last++);
+		return std::stoi(inString.substr(first, last - first));
 	}
 
 	void removeDuplicated(std::vector<gv>& vertices, std::vector<ge>& edges)
@@ -28,18 +47,34 @@ namespace OBJReader {
 		int i = 0;
 		for (const gv& ov : originalVertices)
 		{
-			// see if vertices vector contains ov
-			int index = 0;
-			for (const gv& v : vertices)
+			bool isWallKindVertex = true;
+			for (int c : ov.conn)
 			{
-				if (v.pos == ov.pos)
+				if (!IsEdgeWallKind(originalEdges[c].type))
+				{
+					isWallKindVertex = false;
 					break;
-				index++;
+				}
 			}
 
-			if (index == vertices.size()) // not added yet
+			// see if vertices vector contains ov
+			int index = 0;
+			if (!isWallKindVertex)
+				index = vertices.size();
+			else
+			{
+				for (const gv& v : vertices)
+				{
+					if (v.pos == ov.pos)
+						break;
+					index++;
+				}
+			}
+
+			if (!isWallKindVertex || index == vertices.size()) // not added yet
 			{
 				vertices.emplace_back();
+				vertices.back().id = vertices.size() - 1;
 				vertices.back().pos = ov.pos; // do not connect yet
 			}
 
@@ -82,7 +117,7 @@ namespace OBJReader {
 
 			if (str[0] == 'o' && str[1] == ' ')
 			{
-				currentFloor = numberInString(str);
+				currentFloor = floorNumberFromObjectName(str);
 
 				if (str.find("wall") != std::string::npos)
 					currentEdgeType = EdgeType::Wall;
@@ -96,6 +131,23 @@ namespace OBJReader {
 					currentEdgeType = EdgeType::SpiralStairs;
 				else if (str.find("stairs") != std::string::npos)
 					currentEdgeType = EdgeType::StandardStairs;
+				else if (str.find("toilet") != std::string::npos)
+					currentEdgeType = EdgeType::Toilet;
+				else if (str.find("sink") != std::string::npos)
+					currentEdgeType = EdgeType::Sink;
+				else if (str.find("fridge") != std::string::npos)
+					currentEdgeType = EdgeType::Fridge;
+				else if (str.find("shower") != std::string::npos)
+					currentEdgeType = EdgeType::Shower;
+				else if (str.find("washingMachine") != std::string::npos)
+					currentEdgeType = EdgeType::WashingMachine;
+				else if (str.find("bed") != std::string::npos)
+					currentEdgeType = EdgeType::Bed;
+				else
+				{
+					printf("Unknown object type found in wireframe obj file: %s\n", str.c_str() + 2);
+					assert(false);
+				}
 
 				floorCount = currentFloor + 1 > floorCount ? currentFloor + 1 : floorCount;
 			}
@@ -113,6 +165,7 @@ namespace OBJReader {
 				while (cp < str.length() && str[cp] != ' ' && str[cp] != '\n')cp++;
 
 				wf.vertices.emplace_back();
+				wf.vertices.back().id = wf.vertices.size() - 1;
 				wf.vertices.back().pos.x = std::stof(str.substr(aq, ap - aq)) * inputScale;
 				wf.vertices.back().pos.y = currentFloor * wallHeight;//std::stof(str.substr(bq, bp - bq)) * inputScale;
 				wf.vertices.back().pos.z = std::stof(str.substr(cq, cp - cq)) * inputScale;
