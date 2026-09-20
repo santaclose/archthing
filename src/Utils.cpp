@@ -246,7 +246,7 @@ namespace Utils {
 		}
 	}
 
-	void getStairs(const Wireframe& wf, std::vector<std::vector<vec>>& stairs, unsigned int floor, float wallHeight)
+	void getStairs(const Wireframe& wf, std::vector<std::vector<vec>>& stairs, std::vector<float>& stairWidths, unsigned int floor, float wallHeight)
 	{
 		for (const ge& e : wf.edges)
 		{
@@ -259,6 +259,7 @@ namespace Utils {
 				!contains(stairs, wf.vertices[e.b].pos))
 			{
 				stairs.emplace_back();
+				stairWidths.push_back(e.width);
 
 				//unsigned int initial = e.a, a = e.a, b = e.b;
 				unsigned int initial = 0, a = 0, b = 0;

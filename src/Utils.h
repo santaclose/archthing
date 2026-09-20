@@ -49,6 +49,7 @@ namespace Utils {
 
 	void getStairs(const Wireframe& wf,
 		std::vector<std::vector<vec>>& stairs,
+		std::vector<float>& stairWidths,
 		unsigned int floor,
 		float wallHeight
 	);

@@ -269,8 +269,11 @@ void Model::GenerateModel()
 		Floor::Create(externalCornerPositions, holes, i > 0, i == 0); // no ceiling below when i == 0
 
 		std::vector<std::vector<vec>> stairs;
-		Utils::getStairs(wf, stairs, i, wallHeight);
-		Stairs::Create(stairs, stairsWidth, stairsAreRamps);
+		std::vector<float> stairWidths;
+		Utils::getStairs(wf, stairs, stairWidths, i, wallHeight);
+		assert(stairs.size() == stairWidths.size());
+		for (int i = 0; i < stairs.size(); i++)
+			Stairs::Create(stairs[i], stairWidths[i] == -1.0f ? stairsWidth : stairWidths[i], stairsAreRamps);
 
 		if (belowExternalCornerPositions.size() > 0) // if not first floor
 		{
@@ -295,7 +298,7 @@ void Model::GenerateModel()
 	// markers for objects
 	for (const ge& edge : wf.edges)
 	{
-		if (!IsEdgeObjectKind(edge.type))
+		if (!IsEdgeMovableKind(edge.type))
 			continue;
 
 		vec a = wf.vertices[edge.a].pos;
@@ -304,7 +307,7 @@ void Model::GenerateModel()
 		glm::vec3 b_(b.x, b.y + floorThickness, b.z);
 		glm::quat rot = glm::quatLookAt(glm::normalize(b_ - a_), glm::vec3(0.0f, 1.0f, 0.0f));
 
-		std::string markerName = MarkerNameFromObjectEdge(edge.type);
+		std::string markerName = EdgeTypeToString(edge.type);
 		ml::marker(markerName, a_, rot);
 	}
 }

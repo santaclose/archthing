@@ -21,6 +21,7 @@ namespace OBJReader {
 		for (first = 1; first < inString.length() && (inString[first] != '=' || inString[first - 1] != 'f'); first++);
 		if (first == inString.length()) // not found
 			return 0;
+		first++;
 		for (last = first; last < inString.length() && charIsUint(inString[first]); last++);
 		return std::stoi(inString.substr(first, last - first));
 	}
@@ -30,9 +31,10 @@ namespace OBJReader {
 		unsigned int first, last;
 		for (first = 1; first < inString.length() && (inString[first] != '=' || inString[first - 1] != 'w'); first++);
 		if (first == inString.length()) // not found
-			return 0;
-		for (last = first; last < inString.length() && charIsUint(inString[first]); last++);
-		return std::stoi(inString.substr(first, last - first));
+			return -1.0f;
+		first++;
+		for (last = first; last < inString.length() && charIsFloat(inString[first]); last++);
+		return std::stof(inString.substr(first, last - first));
 	}
 
 	void removeDuplicated(std::vector<gv>& vertices, std::vector<ge>& edges)
@@ -84,8 +86,7 @@ namespace OBJReader {
 
 		for (const ge& oe : originalEdges)
 		{
-			ge newEdge;
-			newEdge.type = oe.type;
+			ge newEdge = oe;
 			newEdge.a = vertexMap[oe.a];
 			newEdge.b = vertexMap[oe.b];
 			edges.push_back(newEdge);
@@ -101,6 +102,7 @@ namespace OBJReader {
 		EdgeType currentEdgeType = EdgeType::Wall;
 		unsigned int currentFloor = 0;
 		floorCount = 1;
+		float currentObjectWidth = -1.0f;
 
 		std::ifstream is(filePath);
 		if (is.fail())
@@ -118,36 +120,9 @@ namespace OBJReader {
 			if (str[0] == 'o' && str[1] == ' ')
 			{
 				currentFloor = floorNumberFromObjectName(str);
-
-				if (str.find("wall") != std::string::npos)
-					currentEdgeType = EdgeType::Wall;
-				else if (str.find("door") != std::string::npos)
-					currentEdgeType = EdgeType::Door;
-				else if (str.find("window") != std::string::npos)
-					currentEdgeType = EdgeType::Window;
-				else if (str.find("hole") != std::string::npos)
-					currentEdgeType = EdgeType::Hole;
-				else if (str.find("spiralStairs") != std::string::npos)
-					currentEdgeType = EdgeType::SpiralStairs;
-				else if (str.find("stairs") != std::string::npos)
-					currentEdgeType = EdgeType::StandardStairs;
-				else if (str.find("toilet") != std::string::npos)
-					currentEdgeType = EdgeType::Toilet;
-				else if (str.find("sink") != std::string::npos)
-					currentEdgeType = EdgeType::Sink;
-				else if (str.find("fridge") != std::string::npos)
-					currentEdgeType = EdgeType::Fridge;
-				else if (str.find("shower") != std::string::npos)
-					currentEdgeType = EdgeType::Shower;
-				else if (str.find("washingMachine") != std::string::npos)
-					currentEdgeType = EdgeType::WashingMachine;
-				else if (str.find("bed") != std::string::npos)
-					currentEdgeType = EdgeType::Bed;
-				else
-				{
-					printf("Unknown object type found in wireframe obj file: %s\n", str.c_str() + 2);
-					assert(false);
-				}
+				currentEdgeType = EdgeTypeFromObjectName(str);
+				if (IsEdgeWidthKind(currentEdgeType))
+					currentObjectWidth = widthFromObjectName(str);
 
 				floorCount = currentFloor + 1 > floorCount ? currentFloor + 1 : floorCount;
 			}
@@ -184,6 +159,8 @@ namespace OBJReader {
 				wf.edges.back().a = std::stoi(str.substr(aq, ap - aq)) - 1;
 				wf.edges.back().b = std::stoi(str.substr(bq, bp - bq)) - 1;
 				wf.edges.back().type = currentEdgeType;
+				if (IsEdgeWidthKind(currentEdgeType))
+					wf.edges.back().width = currentObjectWidth;
 				wf.vertices[wf.edges.back().a].conn.push_back(wf.edges.size() - 1);
 				wf.vertices[wf.edges.back().b].conn.push_back(wf.edges.size() - 1);
 			}

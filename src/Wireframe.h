@@ -17,7 +17,12 @@ enum class EdgeType {
 	Fridge,
 	Shower,
 	WashingMachine,
-	Bed
+	Bed,
+	Sofa,
+	Desk,
+	Dryer,
+	TowelRack,
+	Nightstand
 };
 
 inline bool IsEdgeWallKind(EdgeType edgeType)
@@ -30,15 +35,27 @@ inline bool IsEdgeWidthKind(EdgeType edgeType)
 	return edgeType == EdgeType::StandardStairs;
 }
 
-inline bool IsEdgeObjectKind(EdgeType edgeType)
+inline bool IsEdgeMovableKind(EdgeType edgeType)
 {
 	return edgeType >= EdgeType::Toilet;
 }
 
-inline std::string MarkerNameFromObjectEdge(EdgeType edgeType)
+inline std::string EdgeTypeToString(EdgeType edgeType)
 {
 	switch (edgeType)
 	{
+		case EdgeType::Wall:
+			return "wall";
+		case EdgeType::Door:
+			return "door";
+		case EdgeType::Window:
+			return "window";
+		case EdgeType::Hole:
+			return "hole";
+		case EdgeType::StandardStairs:
+			return "stairs";
+		case EdgeType::SpiralStairs:
+			return "spiralStairs";
 		case EdgeType::Toilet:
 			return "toilet";
 		case EdgeType::Sink:
@@ -51,10 +68,62 @@ inline std::string MarkerNameFromObjectEdge(EdgeType edgeType)
 			return "washingMachine";
 		case EdgeType::Bed:
 			return "bed";
+		case EdgeType::Sofa:
+			return "sofa";
+		case EdgeType::Desk:
+			return "desk";
+		case EdgeType::Dryer:
+			return "dryer";
+		case EdgeType::TowelRack:
+			return "towelRack";
+		case EdgeType::Nightstand:
+			return "nightStand";
 		default:
+			printf("Unknown edge type: %x\n", (unsigned int) edgeType);
 			assert(false);
 			return "";
 	}
+}
+
+inline EdgeType EdgeTypeFromObjectName(const std::string& objName)
+{
+	if (objName.find("wall") != std::string::npos)
+		return EdgeType::Wall;
+	if (objName.find("door") != std::string::npos)
+		return EdgeType::Door;
+	if (objName.find("window") != std::string::npos)
+		return EdgeType::Window;
+	if (objName.find("hole") != std::string::npos)
+		return EdgeType::Hole;
+	if (objName.find("stairs") != std::string::npos)
+		return EdgeType::StandardStairs;
+	if (objName.find("spiralStairs") != std::string::npos)
+		return EdgeType::SpiralStairs;
+	if (objName.find("toilet") != std::string::npos)
+		return EdgeType::Toilet;
+	if (objName.find("sink") != std::string::npos)
+		return EdgeType::Sink;
+	if (objName.find("fridge") != std::string::npos)
+		return EdgeType::Fridge;
+	if (objName.find("shower") != std::string::npos)
+		return EdgeType::Shower;
+	if (objName.find("washingMachine") != std::string::npos)
+		return EdgeType::WashingMachine;
+	if (objName.find("bed") != std::string::npos)
+		return EdgeType::Bed;
+	if (objName.find("sofa") != std::string::npos)
+		return EdgeType::Sofa;
+	if (objName.find("desk") != std::string::npos)
+		return EdgeType::Desk;
+	if (objName.find("dryer") != std::string::npos)
+		return EdgeType::Dryer;
+	if (objName.find("towelRack") != std::string::npos)
+		return EdgeType::TowelRack;
+	if (objName.find("nightStand") != std::string::npos)
+		return EdgeType::Nightstand;
+	printf("Can't find edge type in object name: %s\n", objName.c_str());
+	assert(false);
+	return (EdgeType) -1;
 }
 
 struct ge;
@@ -69,6 +138,7 @@ struct ge
 	EdgeType type;
 	int a;
 	int b;
+	float width;
 };
 struct Wireframe
 {
@@ -135,7 +205,7 @@ struct Wireframe
 			edge.b += originalVertexCount;
 		}
 	}
-	void Print()
+	void Print() const
 	{
 		for (const gv& vtx : vertices)
 		{
@@ -146,7 +216,7 @@ struct Wireframe
 		}
 		for (const ge& edge : edges)
 		{
-			printf("ge   type: %u   a: %u   b: %u\n", edge.type, edge.a, edge.b);
+			printf("ge   type: %u   a: %u   b: %u   width: %f\n", edge.type, edge.a, edge.b, edge.width);
 		}
 	}
 };
