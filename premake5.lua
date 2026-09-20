@@ -1,16 +1,12 @@
 workspace "archthing"
 	architecture "x64"
 	startproject "archthing"
+	multiprocessorcompile "On"
 
 	configurations
 	{
 		"Debug",
 		"Release"
-	}
-	
-	flags
-	{
-		"MultiProcessorCompile"
 	}
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
