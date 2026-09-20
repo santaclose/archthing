@@ -1,6 +1,7 @@
 #include "Utils.h"
 #include "Geometry.h"
 
+#include <cassert>
 #include <iostream>
 #include <algorithm>
 #include <glm/glm.hpp>
@@ -121,7 +122,7 @@ namespace Utils {
 					return { i, vertexAngle[b].first };
 			}
 		}
-		// should never happen
+		assert(false);
 		return { -1, -1 };
 	}
 
